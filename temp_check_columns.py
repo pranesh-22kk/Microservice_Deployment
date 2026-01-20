@@ -1,0 +1,13 @@
+import pandas as pd
+df = pd.read_csv('gym-multi-k8s/0_karmada_gym_results_num_clusters_4_replicas_4.csv', header=None, names=['episode', 'reward', 'ep_block_prob', 'ep_accepted_requests', 'ep_rejected_requests', 'ep_deploy_all', 'ep_ffd', 'ep_ffi', 'ep_bf1b1', 'avg_latency', 'avg_cost', 'avg_cpu_cluster_selected', 'gini', 'execution_time'])
+print("Columns:", df.columns)
+print("Head:")
+print(df.head())
+print("\nMeans:")
+print(df.mean())
+print("\nStd:")
+print(df.std())
+print("\nMin:")
+print(df.min())
+print("\nMax:")
+print(df.max())

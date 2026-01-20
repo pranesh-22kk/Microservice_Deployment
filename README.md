@@ -1,6 +1,3 @@
-# Microservice_Deployment
-HephaestusForge is a reinforcement learning-based system that optimizes microservice deployment across distributed compute environments (edge, fog, cloud) to minimize latency and cost while maximizing resource utilization.
-
 # HephaestusForge
 
 Code repository for the paper entitled 
@@ -138,3 +135,25 @@ tensorboard --logdir=runs
 Experimental results comparing RL agents against baseline algorithms are stored in:
 - `gym-multi-k8s/results/` - Detailed evaluation metrics
 - `*.csv` files - Training logs with various configurations
+
+## Citation
+
+If you use this code in your research, please cite:
+
+```
+HephaestusForge: Optimal Microservice Deployment across
+the Compute Continuum via Reinforcement Learning
+Submitted to Elsevier Future Generation Computer Systems (FGCS)
+```
+
+## License
+
+[Add your license information here]
+
+## Contact
+
+[Add contact information here]
+
+## Acknowledgments
+
+This work is part of research on intelligent resource management for distributed computing systems.

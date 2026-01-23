@@ -1269,13 +1269,12 @@ if is_cloud:
                     st.session_state['selected_folder'] = project_path
                     st.session_state['temp_dir'] = temp_dir
                     st.session_state['uploaded_project'] = True
+                    st.session_state['analyze_uploaded'] = True  # Auto-trigger analysis
                     
-                    st.success(f"✅ Project uploaded successfully! Found: `{os.path.basename(project_path)}`")
-                    st.info("👇 Click the button below to analyze your project")
-                    
-                    if st.button("🚀 Analyze My Project", type="primary", use_container_width=True):
-                        st.session_state['analyze_uploaded'] = True
-                        st.rerun()
+                    st.success(f"✅ Project uploaded: `{os.path.basename(project_path)}`")
+                    st.info("🔄 Starting analysis automatically...")
+                    time.sleep(1)
+                    st.rerun()
                     
                 except Exception as e:
                     st.error(f"❌ Error extracting ZIP file: {str(e)}")
@@ -1449,6 +1448,9 @@ with col2:
     st.markdown("<br>", unsafe_allow_html=True)
     analyze_button = st.button("🚀 Analyze & Generate Deployment Strategy", type="primary")
 
+# Initialize folder_path
+folder_path = ""
+
 # Handle demo mode
 if st.session_state.get('demo_mode', False):
     folder_path = '/demo/sample-microservice'
@@ -1460,6 +1462,10 @@ if st.session_state.get('analyze_uploaded', False):
     folder_path = st.session_state.get('selected_folder', '')
     analyze_button = True
     st.session_state['analyze_uploaded'] = False  # Reset for next run
+    
+# Get folder path from text input if not already set
+if not folder_path and 'folder_path_input' in st.session_state:
+    folder_path = st.session_state.get('folder_path_input', '')
 
 # Store parsed components in session state
 if 'microservice_components' not in st.session_state:

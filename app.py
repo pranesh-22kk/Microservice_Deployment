@@ -1219,22 +1219,48 @@ st.header("📁 Step 1: Select Your Project Folder")
 
 # Cloud warning and demo mode
 if is_cloud:
-    st.info("""
-    🌐 **Running on Streamlit Cloud**  
-    The file browser won't work in cloud mode. Try the **Demo Mode** below to see how the app works!
+    st.warning("""
+    🌐 **You're viewing this on Streamlit Cloud**  
+    
+    **Important:** This app runs on a remote server, so your local computer paths (like `C:/Users/...`) won't work here.
+    
+    **👇 Click the button below to see a live demo with sample data:**
     """)
     
     col_demo1, col_demo2, col_demo3 = st.columns([1, 2, 1])
     with col_demo2:
-        if st.button("🎭 Try Demo Mode - Sample Microservice Project", use_container_width=True, type="primary"):
+        if st.button("🎭 Try Demo Mode - Sample Microservice Project", use_container_width=True, type="primary", key="demo_button"):
             st.session_state['demo_mode'] = True
             st.session_state['selected_folder'] = '/demo/sample-microservice'
             st.rerun()
     
     st.markdown("<br>", unsafe_allow_html=True)
-    st.markdown("**Or run this app locally to analyze your own projects:**")
-    st.code("git clone https://github.com/your-repo/microservice_deployment && streamlit run app.py", language="bash")
+    
+    with st.expander("💻 Want to analyze YOUR projects?"):
+        st.markdown("""
+        To analyze your own microservice projects, run this app **locally** on your computer:
+        
+        **Step 1:** Clone the repository
+        ```bash
+        git clone https://github.com/pranesh-22kk/microservice_deployment
+        cd microservice_deployment
+        ```
+        
+        **Step 2:** Install dependencies
+        ```bash
+        pip install -r requirements.txt
+        ```
+        
+        **Step 3:** Run the app
+        ```bash
+        streamlit run app.py
+        ```
+        
+        Then you can use the Browse button to select any folder on your computer!
+        """)
+    
     st.markdown("---")
+    st.stop()  # Don't show the input field on cloud
 
 # Enhanced input area with better UX
 col1, col2, col3 = st.columns([1, 3, 1])

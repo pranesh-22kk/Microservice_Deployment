@@ -1213,8 +1213,18 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+# Initialize session state
+if 'microservice_components' not in st.session_state:
+    st.session_state['microservice_components'] = []
+if 'deployment_results' not in st.session_state:
+    st.session_state['deployment_results'] = {}
+
 # Detect if running on Streamlit Cloud
 is_cloud = os.path.exists('/mount/src') or not os.path.exists('C:/')
+
+# Initialize variables
+folder_path = ""
+analyze_button = False
 
 # Main folder selection area
 st.markdown("---")
@@ -1249,8 +1259,8 @@ if is_cloud:
             key="project_zip"
         )
         
-        if uploaded_file is not None:
-            with st.spinner("📦 Extracting and analyzing your project..."):
+        if uploaded_file is not None and not st.session_state.get('file_processed', False):
+            with st.spinner("📦 Extracting your project..."):
                 try:
                     # Create temporary directory
                     temp_dir = tempfile.mkdtemp()
@@ -1266,28 +1276,32 @@ if is_cloud:
                     else:
                         project_path = temp_dir
                     
+                    # Store in session state
                     st.session_state['selected_folder'] = project_path
                     st.session_state['temp_dir'] = temp_dir
-                    st.session_state['uploaded_project'] = True
-                    st.session_state['analyze_uploaded'] = True  # Auto-trigger analysis
+                    st.session_state['file_processed'] = True
                     
-                    st.success(f"✅ Project uploaded: `{os.path.basename(project_path)}`")
-                    st.info("🔄 Starting analysis automatically...")
-                    time.sleep(1)
-                    st.rerun()
+                    st.success(f"✅ Extracted: `{os.path.basename(project_path)}`")
                     
                 except Exception as e:
-                    st.error(f"❌ Error extracting ZIP file: {str(e)}")
-                    st.info("💡 Make sure your ZIP file is not corrupted and contains a valid project folder")
+                    st.error(f"❌ Error: {str(e)}")
+                    st.session_state['file_processed'] = False
+        
+        # Show analyze button if file is uploaded and processed
+        if st.session_state.get('file_processed', False):
+            st.info(f"📂 Ready to analyze: `{os.path.basename(st.session_state.get('selected_folder', ''))}`")
+            if st.button("🚀 Analyze Uploaded Project", type="primary", use_container_width=True, key="analyze_upload_btn"):
+                folder_path = st.session_state.get('selected_folder', '')
+                analyze_button = True
+                st.session_state['file_processed'] = False  # Reset for next upload
     
     with tab2:
         st.markdown("### 🎭 Demo Mode")
         st.info("See how the app works with a sample microservice project")
         
         if st.button("🎭 Try Demo Mode - Sample Microservice Project", use_container_width=True, type="primary", key="demo_button"):
-            st.session_state['demo_mode'] = True
-            st.session_state['selected_folder'] = '/demo/sample-microservice'
-            st.rerun()
+            folder_path = '/demo/sample-microservice'
+            analyze_button = True
     
     with tab3:
         st.markdown("### 💻 Run Locally on Your Computer")
@@ -1317,14 +1331,16 @@ if is_cloud:
         - ✅ Keep your code private
         """)
     
-    st.markdown("---")
-    st.stop()  # Don't show the input field on cloud
+    # Skip to analysis if button was clicked
+    if not analyze_button:
+        st.stop()
 
-# Enhanced input area with better UX
-col1, col2, col3 = st.columns([1, 3, 1])
+# LOCAL MODE - Enhanced input area with better UX
+if not is_cloud:
+    col1, col2, col3 = st.columns([1, 3, 1])
 
-with col2:
-    st.markdown("### 📂 Enter Folder Path")
+    with col2:
+        st.markdown("### 📂 Enter Folder Path")
     
     # Create two columns: one for text input, one for file explorer button
     col_input, col_button = st.columns([4, 1])
@@ -1446,32 +1462,12 @@ with col2:
         """)
     
     st.markdown("<br>", unsafe_allow_html=True)
-    analyze_button = st.button("🚀 Analyze & Generate Deployment Strategy", type="primary")
-
-# Initialize folder_path
-folder_path = ""
-
-# Handle demo mode
-if st.session_state.get('demo_mode', False):
-    folder_path = '/demo/sample-microservice'
-    analyze_button = True
-    st.session_state['demo_mode'] = False  # Reset for next run
-
-# Handle uploaded project analysis
-if st.session_state.get('analyze_uploaded', False):
-    folder_path = st.session_state.get('selected_folder', '')
-    analyze_button = True
-    st.session_state['analyze_uploaded'] = False  # Reset for next run
     
-# Get folder path from text input if not already set
-if not folder_path and 'folder_path_input' in st.session_state:
-    folder_path = st.session_state.get('folder_path_input', '')
-
-# Store parsed components in session state
-if 'microservice_components' not in st.session_state:
-    st.session_state['microservice_components'] = []
-if 'deployment_results' not in st.session_state:
-    st.session_state['deployment_results'] = {}
+    # Only show analyze button if not on cloud (cloud handles it differently)
+    if not is_cloud:
+        if st.button("🚀 Analyze & Generate Deployment Strategy", type="primary"):
+            analyze_button = True
+            folder_path = st.session_state.get('folder_path_input', folder_path)
 
 if analyze_button and folder_path:
     st.markdown("---")

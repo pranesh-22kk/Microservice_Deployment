@@ -11,6 +11,17 @@ import json
 from pathlib import Path
 from typing import Dict, List, Tuple, Optional
 import time
+import tkinter as tk
+from tkinter import filedialog
+from datetime import datetime
+from io import BytesIO
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import letter, A4
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak, Image
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import inch
+from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
+from reportlab.pdfgen import canvas
 
 # Configure Streamlit page
 st.set_page_config(
@@ -20,9 +31,16 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Custom CSS for enhanced UI
+# Custom CSS for enhanced UI with smooth 3D effects
 st.markdown("""
 <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+    
+    * {
+        font-family: 'Inter', sans-serif;
+    }
+    
+    /* Smooth 3D Main Header with Animation */
     .main-header {
         font-size: 3rem;
         font-weight: bold;
@@ -31,28 +49,101 @@ st.markdown("""
         -webkit-text-fill-color: transparent;
         text-align: center;
         padding: 1rem;
+        animation: fadeInDown 0.8s ease-out;
+        text-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+        transform-style: preserve-3d;
     }
+    
+    @keyframes fadeInDown {
+        from {
+            opacity: 0;
+            transform: translateY(-30px) rotateX(-10deg);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0) rotateX(0);
+        }
+    }
+    
+    /* 3D Metric Cards with Hover Effects */
     .metric-card {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         padding: 1.5rem;
-        border-radius: 10px;
+        border-radius: 15px;
         color: white;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        transform-style: preserve-3d;
+        position: relative;
+        overflow: hidden;
     }
+    
+    .metric-card::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        background: linear-gradient(45deg, transparent, rgba(255,255,255,0.1), transparent);
+        transform: rotate(45deg);
+        transition: all 0.6s;
+    }
+    
+    .metric-card:hover::before {
+        left: 100%;
+    }
+    
+    .metric-card:hover {
+        transform: translateY(-10px) rotateX(5deg) rotateY(2deg) scale(1.02);
+        box-shadow: 0 20px 50px rgba(102, 126, 234, 0.4);
+    }
+    
+    /* Smooth Success/Warning Boxes with 3D Effect */
     .success-box {
-        background-color: #d4edda;
+        background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
         border-left: 4px solid #28a745;
         padding: 1rem;
-        border-radius: 5px;
+        border-radius: 10px;
         margin: 1rem 0;
+        box-shadow: 0 5px 15px rgba(40, 167, 69, 0.2);
+        transition: all 0.3s ease;
+        animation: slideInLeft 0.5s ease-out;
     }
+    
+    .success-box:hover {
+        transform: translateX(5px);
+        box-shadow: 0 8px 20px rgba(40, 167, 69, 0.3);
+    }
+    
+    @keyframes slideInLeft {
+        from {
+            opacity: 0;
+            transform: translateX(-30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+    
     .warning-box {
-        background-color: #fff3cd;
+        background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
         border-left: 4px solid #ffc107;
         padding: 1rem;
-        border-radius: 5px;
+        border-radius: 10px;
         margin: 1rem 0;
+        box-shadow: 0 5px 15px rgba(255, 193, 7, 0.2);
+        transition: all 0.3s ease;
+        animation: slideInLeft 0.5s ease-out;
     }
+    
+    .warning-box:hover {
+        transform: translateX(5px);
+        box-shadow: 0 8px 20px rgba(255, 193, 7, 0.3);
+    }
+    
+    /* Enhanced 3D Buttons */
     .stButton>button {
         width: 100%;
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -60,19 +151,362 @@ st.markdown("""
         border: none;
         padding: 0.75rem;
         font-weight: bold;
-        border-radius: 8px;
-        transition: all 0.3s ease;
+        border-radius: 12px;
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        box-shadow: 0 5px 20px rgba(102, 126, 234, 0.3);
+        position: relative;
+        overflow: hidden;
+        transform-style: preserve-3d;
     }
+    
+    .stButton>button::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+        transition: left 0.5s;
+    }
+    
+    .stButton>button:hover::before {
+        left: 100%;
+    }
+    
     .stButton>button:hover {
-        transform: translateY(-2px);
+        transform: translateY(-5px) scale(1.02);
+        box-shadow: 0 10px 35px rgba(102, 126, 234, 0.5);
+    }
+    
+    .stButton>button:active {
+        transform: translateY(-2px) scale(0.98);
         box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
     }
+    
+    /* File Explorer Button Styling */
+    .file-explorer-btn {
+        background: linear-gradient(135deg, #48c6ef 0%, #6f86d6 100%) !important;
+        color: white !important;
+        border: none !important;
+        padding: 0.6rem 1.5rem !important;
+        font-weight: 600 !important;
+        border-radius: 10px !important;
+        transition: all 0.3s ease !important;
+        box-shadow: 0 4px 15px rgba(72, 198, 239, 0.3) !important;
+        cursor: pointer !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 8px !important;
+    }
+    
+    .file-explorer-btn:hover {
+        transform: translateY(-3px) scale(1.05) !important;
+        box-shadow: 0 8px 25px rgba(72, 198, 239, 0.5) !important;
+    }
+    
+    /* Enhanced Input Fields with 3D Effect */
+    .stTextInput>div>div>input {
+        border-radius: 10px;
+        border: 2px solid #e0e0e0;
+        padding: 0.75rem;
+        transition: all 0.3s ease;
+        box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
+    }
+    
+    .stTextInput>div>div>input:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1), inset 0 2px 4px rgba(0,0,0,0.05);
+        transform: translateY(-2px);
+    }
+    
+    /* Smooth Metric Value Animation */
     div[data-testid="stMetricValue"] {
         font-size: 2rem;
         font-weight: bold;
+        animation: scaleIn 0.6s ease-out;
+    }
+    
+    @keyframes scaleIn {
+        from {
+            opacity: 0;
+            transform: scale(0.8);
+        }
+        to {
+            opacity: 1;
+            transform: scale(1);
+        }
+    }
+    
+    /* Container Hover Effects */
+    div[data-testid="stVerticalBlock"] > div {
+        transition: all 0.3s ease;
+    }
+    
+    /* Smooth Expander */
+    .streamlit-expanderHeader {
+        border-radius: 8px;
+        transition: all 0.3s ease;
+    }
+    
+    .streamlit-expanderHeader:hover {
+        background-color: rgba(102, 126, 234, 0.05);
+        transform: translateX(5px);
+    }
+    
+    /* Progress Bar Smooth Animation */
+    .stProgress > div > div {
+        transition: width 0.5s ease-in-out;
     }
 </style>
 """, unsafe_allow_html=True)
+
+# Helper function to open folder dialog
+def select_folder():
+    """
+    Open a folder selection dialog using tkinter
+    """
+    try:
+        # Create a root window and hide it
+        root = tk.Tk()
+        root.withdraw()
+        
+        # Make dialog appear on top
+        root.wm_attributes('-topmost', 1)
+        root.lift()
+        root.focus_force()
+        
+        # Open folder dialog
+        folder_selected = filedialog.askdirectory(
+            parent=root,
+            title="Select Your Microservice Project Folder",
+            mustexist=True
+        )
+        
+        # Properly cleanup
+        root.update()
+        root.destroy()
+        
+        return folder_selected if folder_selected else None
+    except Exception as e:
+        return None
+
+# Function to generate PDF report
+def generate_pdf_report(results: Dict, folder_path: str) -> BytesIO:
+    """
+    Generate a professional PDF report of deployment results
+    """
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=72, leftMargin=72,
+                           topMargin=72, bottomMargin=18)
+    
+    # Container for the 'Flowable' objects
+    elements = []
+    
+    # Define styles
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle(
+        'CustomTitle',
+        parent=styles['Heading1'],
+        fontSize=24,
+        textColor=colors.HexColor('#667eea'),
+        spaceAfter=30,
+        alignment=TA_CENTER,
+        fontName='Helvetica-Bold'
+    )
+    
+    heading_style = ParagraphStyle(
+        'CustomHeading',
+        parent=styles['Heading2'],
+        fontSize=16,
+        textColor=colors.HexColor('#764ba2'),
+        spaceAfter=12,
+        spaceBefore=12,
+        fontName='Helvetica-Bold'
+    )
+    
+    subheading_style = ParagraphStyle(
+        'CustomSubHeading',
+        parent=styles['Heading3'],
+        fontSize=12,
+        textColor=colors.HexColor('#667eea'),
+        spaceAfter=8,
+        fontName='Helvetica-Bold'
+    )
+    
+    # Title
+    elements.append(Paragraph("🚀 HephaestusForge", title_style))
+    elements.append(Paragraph("Edge-Optimized Microservice Deployment Report", styles['Heading3']))
+    elements.append(Spacer(1, 0.3*inch))
+    
+    # Report metadata
+    report_date = datetime.now().strftime("%B %d, %Y at %I:%M %p")
+    elements.append(Paragraph(f"<b>Generated:</b> {report_date}", styles['Normal']))
+    elements.append(Paragraph(f"<b>Project Path:</b> {folder_path}", styles['Normal']))
+    elements.append(Spacer(1, 0.3*inch))
+    
+    # Calculate summary metrics
+    total_cost_reduction = sum(result['improvements']['cost_reduction'] for result in results.values())
+    total_latency_reduction = sum(result['improvements']['latency_reduction'] for result in results.values())
+    total_gini_improvement = sum(result['improvements']['gini_improvement'] for result in results.values())
+    
+    edge_deployments = sum(1 for r in results.values() if r['strategy']['deployment_type'] == 'edge')
+    fog_deployments = sum(1 for r in results.values() if r['strategy']['deployment_type'] == 'fog')
+    cloud_deployments = sum(1 for r in results.values() if r['strategy']['deployment_type'] == 'cloud')
+    
+    # Executive Summary
+    elements.append(Paragraph("Executive Summary", heading_style))
+    
+    summary_data = [
+        ['Metric', 'Value'],
+        ['Total Components Analyzed', str(len(results))],
+        ['Edge Deployments', f"{edge_deployments} ({edge_deployments/len(results)*100:.1f}%)"],
+        ['Fog Deployments', f"{fog_deployments} ({fog_deployments/len(results)*100:.1f}%)"],
+        ['Cloud Deployments', f"{cloud_deployments} ({cloud_deployments/len(results)*100:.1f}%)"],
+        ['Total Cost Savings', f"{total_cost_reduction:.2f} units"],
+        ['Total Latency Reduction', f"{total_latency_reduction:.2f}ms"],
+        ['Load Balance Improvement', f"{total_gini_improvement:.3f}"],
+    ]
+    
+    summary_table = Table(summary_data, colWidths=[3*inch, 2.5*inch])
+    summary_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#667eea')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 12),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+        ('GRID', (0, 0), (-1, -1), 1, colors.grey),
+        ('FONTNAME', (0, 1), (0, -1), 'Helvetica-Bold'),
+    ]))
+    
+    elements.append(summary_table)
+    elements.append(Spacer(1, 0.3*inch))
+    
+    # Key Benefits
+    elements.append(Paragraph("Key Performance Improvements", heading_style))
+    benefits = [
+        f"💰 <b>Cost Optimization:</b> Achieved {total_cost_reduction:.2f} units in cost savings through intelligent resource allocation",
+        f"⚡ <b>Latency Reduction:</b> Reduced response time by {total_latency_reduction:.2f}ms by deploying closer to users",
+        f"⚖️ <b>Better Load Distribution:</b> Improved Gini coefficient by {total_gini_improvement:.3f} for balanced resource usage",
+        f"🎯 <b>Edge Computing:</b> {edge_deployments} components optimized for edge deployment"
+    ]
+    
+    for benefit in benefits:
+        elements.append(Paragraph(benefit, styles['Normal']))
+        elements.append(Spacer(1, 0.1*inch))
+    
+    elements.append(Spacer(1, 0.2*inch))
+    
+    # Component Details
+    elements.append(PageBreak())
+    elements.append(Paragraph("Component Deployment Strategies", heading_style))
+    elements.append(Spacer(1, 0.2*inch))
+    
+    for idx, (component_name, result) in enumerate(results.items(), 1):
+        component = result['component']
+        strategy = result['strategy']
+        karmada = result['karmada']
+        optimized = result['optimized']
+        improvements = result['improvements']
+        
+        # Component header
+        elements.append(Paragraph(f"{idx}. {component_name.upper()}", subheading_style))
+        
+        # Component specs
+        specs_text = f"""
+        <b>Resource Requirements:</b> CPU: {component['cpu_request']} cores, Memory: {component['memory_request']}GB, Replicas: {component['num_replicas']}<br/>
+        <b>Deployment Strategy:</b> {strategy['deployment_type'].title()} at {strategy['location']}<br/>
+        <b>Confidence Score:</b> {strategy['confidence']:.1f}%<br/>
+        <b>Reasoning:</b> {strategy['reasoning']}
+        """
+        elements.append(Paragraph(specs_text, styles['Normal']))
+        elements.append(Spacer(1, 0.1*inch))
+        
+        # Comparison table
+        comparison_data = [
+            ['Metric', 'Karmada Baseline', 'Optimized', 'Improvement'],
+            ['Cost', f"{karmada['cost']:.2f}", f"{optimized['cost']:.2f}", f"-{improvements['cost_reduction']:.2f}"],
+            ['Latency (ms)', f"{karmada['latency']:.2f}", f"{optimized['latency']:.2f}", f"-{improvements['latency_reduction']:.2f}"],
+            ['Gini Coefficient', f"{karmada['gini']:.3f}", f"{optimized['gini']:.3f}", f"-{improvements['gini_improvement']:.3f}"],
+            ['Rejection Rate', f"{karmada['rejection_rate']:.2%}", f"{optimized['rejection_rate']:.2%}", 
+             f"{(karmada['rejection_rate']-optimized['rejection_rate']):.2%}"],
+        ]
+        
+        comp_table = Table(comparison_data, colWidths=[1.5*inch, 1.5*inch, 1.5*inch, 1.5*inch])
+        comp_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#764ba2')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 10),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.lightgrey),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black),
+            ('FONTNAME', (0, 1), (0, -1), 'Helvetica-Bold'),
+        ]))
+        
+        elements.append(comp_table)
+        elements.append(Spacer(1, 0.2*inch))
+    
+    # Deployment Distribution
+    elements.append(PageBreak())
+    elements.append(Paragraph("Deployment Distribution", heading_style))
+    elements.append(Spacer(1, 0.2*inch))
+    
+    # Distribution table
+    dist_data = [
+        ['Deployment Type', 'Components', 'Percentage'],
+        ['Edge', str(edge_deployments), f"{edge_deployments/len(results)*100:.1f}%"],
+        ['Fog', str(fog_deployments), f"{fog_deployments/len(results)*100:.1f}%"],
+        ['Cloud', str(cloud_deployments), f"{cloud_deployments/len(results)*100:.1f}%"],
+    ]
+    
+    dist_table = Table(dist_data, colWidths=[2*inch, 2*inch, 2*inch])
+    dist_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#667eea')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 11),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 10),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+        ('GRID', (0, 0), (-1, -1), 1, colors.grey),
+    ]))
+    
+    elements.append(dist_table)
+    elements.append(Spacer(1, 0.3*inch))
+    
+    # Recommendations
+    elements.append(Paragraph("Recommendations & Next Steps", heading_style))
+    recommendations = [
+        "1. <b>Review component strategies:</b> Validate that the deployment recommendations align with your business requirements",
+        "2. <b>Implement edge infrastructure:</b> Set up edge nodes at recommended locations for optimal performance",
+        "3. <b>Configure monitoring:</b> Deploy monitoring tools to track latency, cost, and resource utilization",
+        "4. <b>Gradual rollout:</b> Start with non-critical components before migrating production workloads",
+        "5. <b>Performance testing:</b> Conduct load tests to validate latency and throughput improvements",
+    ]
+    
+    for rec in recommendations:
+        elements.append(Paragraph(rec, styles['Normal']))
+        elements.append(Spacer(1, 0.1*inch))
+    
+    # Footer
+    elements.append(Spacer(1, 0.5*inch))
+    footer_text = """
+    <para align=center>
+    <b>HephaestusForge</b> - Edge-Optimized Microservice Deployment<br/>
+    Powered by Reinforcement Learning & Deep Sets Architecture<br/>
+    © 2026 All Rights Reserved
+    </para>
+    """
+    elements.append(Paragraph(footer_text, styles['Normal']))
+    
+    # Build PDF
+    doc.build(elements)
+    buffer.seek(0)
+    return buffer
 
 # Folder parsing function to extract microservice components
 def parse_microservice_folder(folder_path: str) -> List[Dict]:
@@ -676,17 +1110,58 @@ def get_deployment_reasoning(component: Dict, deployment_type: str) -> str:
 # MAIN APPLICATION UI
 # ============================================================================
 
-# Enhanced Header with gradient
-st.markdown('<h1 class="main-header">🚀 HephaestusForge</h1>', unsafe_allow_html=True)
-st.markdown('<p style="text-align: center; font-size: 1.2rem; color: #666; margin-top: -1rem;">Edge-Optimized Microservice Deployment System</p>', unsafe_allow_html=True)
+# Enhanced Header with gradient and 3D effect
+st.markdown('''
+<div style="position: relative; overflow: hidden;">
+    <h1 class="main-header">🚀 HephaestusForge</h1>
+    <p style="text-align: center; font-size: 1.2rem; color: #666; margin-top: -1rem; animation: fadeIn 1s ease-in;">
+        Edge-Optimized Microservice Deployment System
+    </p>
+</div>
 
-# Info banner
+<style>
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    
+    @keyframes float {
+        0%, 100% { transform: translateY(0px); }
+        50% { transform: translateY(-20px); }
+    }
+    
+    .float-animation {
+        animation: float 3s ease-in-out infinite;
+    }
+</style>
+''', unsafe_allow_html=True)
+
+# Info banner with smooth entrance
 st.markdown("""
-<div style="background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%); padding: 1.5rem; border-radius: 10px; margin: 2rem 0;">
-    <h3 style="margin: 0 0 0.5rem 0;">🎯 What This Does</h3>
-    <p style="margin: 0;">Analyzes your microservice architecture and generates optimal edge/fog/cloud deployment strategies using ML-based optimization. 
+<div style="background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%); 
+            padding: 1.5rem; 
+            border-radius: 15px; 
+            margin: 2rem 0;
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.1);
+            border: 1px solid rgba(102, 126, 234, 0.2);
+            animation: slideUp 0.8s ease-out;">
+    <h3 style="margin: 0 0 0.5rem 0; color: #667eea;">🎯 What This Does</h3>
+    <p style="margin: 0; line-height: 1.6;">Analyzes your microservice architecture and generates optimal edge/fog/cloud deployment strategies using ML-based optimization. 
     Provides cost savings, latency improvements, and better resource distribution.</p>
 </div>
+
+<style>
+    @keyframes slideUp {
+        from { 
+            opacity: 0; 
+            transform: translateY(30px);
+        }
+        to { 
+            opacity: 1; 
+            transform: translateY(0);
+        }
+    }
+</style>
 """, unsafe_allow_html=True)
 
 # Main folder selection area
@@ -698,23 +1173,120 @@ col1, col2, col3 = st.columns([1, 3, 1])
 
 with col2:
     st.markdown("### 📂 Enter Folder Path")
-    folder_path = st.text_input(
-        "Path to your microservice project",
-        placeholder="C:/projects/my-microservice  or  /home/user/project",
-        help="Enter the absolute path to your microservice project folder",
-        label_visibility="collapsed"
-    )
     
-    # Examples expander
+    # Create two columns: one for text input, one for file explorer button
+    col_input, col_button = st.columns([4, 1])
+    
+    # Get default value from session state if folder was selected
+    default_path = st.session_state.get('selected_folder', '')
+    
+    with col_input:
+        folder_path = st.text_input(
+            "Path to your microservice project",
+            value=default_path,
+            placeholder="C:/projects/my-microservice  or  /home/user/project",
+            help="Enter the absolute path to your microservice project folder",
+            label_visibility="collapsed",
+            key="folder_path_input"
+        )
+    
+    with col_button:
+        st.markdown("<br>", unsafe_allow_html=True)
+        if st.button("📁 Browse", help="Open file explorer to select folder", key="browse_btn"):
+            # Show loading message
+            with st.spinner("Opening file explorer..."):
+                # Open folder dialog
+                selected_folder = select_folder()
+            
+            if selected_folder:
+                # Update session state with selected folder
+                st.session_state['selected_folder'] = selected_folder
+                st.session_state['browse_success'] = True
+                st.rerun()
+            else:
+                st.warning("⚠️ No folder selected. Please try again or type the path manually.")
+    
+    # Show selected path with nice styling if folder was selected via browse
+    if 'selected_folder' in st.session_state and st.session_state['selected_folder']:
+        # Show balloons only once after successful selection
+        if st.session_state.get('browse_success', False):
+            st.balloons()
+            st.session_state['browse_success'] = False
+        
+        selected_path = st.session_state['selected_folder']
+        folder_name = os.path.basename(selected_path)
+        parent_path = os.path.dirname(selected_path)
+        
+        # Get immediate subfolders
+        try:
+            subfolders = [f for f in os.listdir(selected_path) 
+                         if os.path.isdir(os.path.join(selected_path, f)) 
+                         and not f.startswith('.')][:10]  # Show first 10 subfolders
+        except:
+            subfolders = []
+        
+        st.markdown(f"""
+        <div style="background: linear-gradient(135deg, #28a74515 0%, #20c99715 100%); 
+                    padding: 1rem; 
+                    border-radius: 10px; 
+                    margin-top: 0.5rem;
+                    border-left: 4px solid #28a745;
+                    animation: slideIn 0.5s ease-out;">
+            <strong>📂 Selected Folder:</strong><br>
+            <code style="background: #f8f9fa; padding: 0.3rem 0.6rem; border-radius: 5px; color: #667eea; font-size: 0.9rem;">
+                {selected_path}
+            </code>
+            <br><br>
+            <strong>📁 Folder Name:</strong> <span style="color: #667eea; font-weight: 600;">{folder_name}</span><br>
+            <strong>📍 Parent Directory:</strong> <code style="background: #f8f9fa; padding: 0.2rem 0.4rem; border-radius: 3px; font-size: 0.85rem;">{parent_path}</code>
+        </div>
+        <style>
+            @keyframes slideIn {{
+                from {{ opacity: 0; transform: translateX(-20px); }}
+                to {{ opacity: 1; transform: translateX(0); }}
+            }}
+        </style>
+        """, unsafe_allow_html=True)
+        
+        # Show subfolders in an expandable section
+        if subfolders:
+            with st.expander(f"📂 View Subfolders in '{folder_name}' ({len(subfolders)} folders)", expanded=False):
+                st.markdown("**Detected subfolders:**")
+                
+                # Display subfolders in a nice grid
+                cols_per_row = 3
+                for i in range(0, len(subfolders), cols_per_row):
+                    cols = st.columns(cols_per_row)
+                    for j, col in enumerate(cols):
+                        if i + j < len(subfolders):
+                            with col:
+                                subfolder = subfolders[i + j]
+                                # Check if subfolder has files
+                                subfolder_path = os.path.join(selected_path, subfolder)
+                                try:
+                                    file_count = len([f for f in os.listdir(subfolder_path) 
+                                                    if os.path.isfile(os.path.join(subfolder_path, f))])
+                                    st.markdown(f"📁 **{subfolder}**  \n`{file_count} files`")
+                                except:
+                                    st.markdown(f"📁 **{subfolder}**")
+    
+    # Examples expander with enhanced styling
     with st.expander("💡 Need help? See examples"):
         st.markdown("""
         **Windows Examples:**
         - `C:/Users/YourName/Documents/my-project`
         - `D:/projects/microservices`
+        - `C:/Dev/web-app`
         
         **Linux/Mac Examples:**
         - `/home/username/projects/my-app`
         - `/Users/username/Documents/project`
+        - `~/Development/my-service`
+        
+        **💡 Quick Tips:**
+        - Use forward slashes `/` on all platforms
+        - Avoid spaces in folder names when possible
+        - Make sure you have read permissions
         """)
     
     st.markdown("<br>", unsafe_allow_html=True)
@@ -729,24 +1301,38 @@ if 'deployment_results' not in st.session_state:
 if analyze_button and folder_path:
     st.markdown("---")
     
-    # Progress tracking
+    # Enhanced progress tracking with smooth animations
+    st.markdown("""
+    <style>
+        .stProgress > div > div {
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            animation: progressPulse 1.5s ease-in-out infinite;
+        }
+        
+        @keyframes progressPulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.8; }
+        }
+    </style>
+    """, unsafe_allow_html=True)
+    
     progress_bar = st.progress(0)
     status_text = st.empty()
     
     with st.container():
         try:
-            # Step 1: Validate path
-            status_text.text("⏳ Validating folder path...")
+            # Step 1: Validate path with smooth animation
+            status_text.markdown("### ⏳ Validating folder path...")
             progress_bar.progress(20)
             time.sleep(0.3)
             
             # Step 2: Scan folder
-            status_text.text("🔍 Scanning project structure...")
+            status_text.markdown("### 🔍 Scanning project structure...")
             progress_bar.progress(40)
             components = parse_microservice_folder(folder_path)
             
             # Step 3: Analyze components
-            status_text.text("🧠 Analyzing microservice components...")
+            status_text.markdown("### 🧠 Analyzing microservice components...")
             progress_bar.progress(60)
             time.sleep(0.3)
             
@@ -776,7 +1362,7 @@ if analyze_button and folder_path:
                        "- Files: `.sql`, `.db`, `docker-compose.yml` files")
             else:
                 # Step 4: Generate strategies
-                status_text.text("🎯 Generating deployment strategies...")
+                status_text.markdown("### 🎯 Generating deployment strategies...")
                 progress_bar.progress(80)
                 time.sleep(0.3)
                 
@@ -785,6 +1371,53 @@ if analyze_button and folder_path:
                 status_text.empty()
                 progress_bar.empty()
                 
+                # Show project structure overview first
+                st.markdown("---")
+                st.markdown("### 📁 Project Structure Overview")
+                
+                col_overview1, col_overview2, col_overview3 = st.columns(3)
+                
+                with col_overview1:
+                    total_files = sum(len(comp.get('files', [])) for comp in components)
+                    st.metric("📄 Total Files", total_files, help="Total number of files detected across all components")
+                
+                with col_overview2:
+                    total_dirs = sum(len(comp.get('directories', [])) for comp in components)
+                    st.metric("📂 Total Directories", total_dirs, help="Total number of directories detected")
+                
+                with col_overview3:
+                    st.metric("🔧 Components Found", len(components), help="Number of microservice components identified")
+                
+                # Project folder tree visualization
+                with st.expander("🌳 View Complete Folder Tree", expanded=False):
+                    st.markdown("**Project Root:** `" + folder_path + "`")
+                    st.markdown("```")
+                    st.markdown("📦 " + os.path.basename(folder_path))
+                    
+                    for i, comp in enumerate(components):
+                        component_type = comp['name'].split('-')[0]
+                        is_last = (i == len(components) - 1)
+                        prefix = "└──" if is_last else "├──"
+                        
+                        st.markdown(f"{prefix} 📁 {component_type}/")
+                        
+                        # Show directories
+                        dirs = comp.get('directories', [])[:3]  # Show first 3
+                        for j, directory in enumerate(dirs):
+                            dir_prefix = "    └──" if j == len(dirs) - 1 and not comp.get('files') else "    ├──"
+                            st.markdown(f"{dir_prefix} 📂 {directory}/")
+                        
+                        # Show files
+                        files = comp.get('files', [])[:5]  # Show first 5
+                        for j, file in enumerate(files):
+                            file_prefix = "    └──" if j == len(files) - 1 else "    ├──"
+                            st.markdown(f"{file_prefix} 📄 {file}")
+                        
+                        if len(comp.get('files', [])) > 5:
+                            st.markdown(f"    └── ... and {len(comp.get('files', [])) - 5} more files")
+                    
+                    st.markdown("```")
+                
                 st.markdown(f"""
                 <div class="success-box">
                     <h3>✅ Analysis Complete!</h3>
@@ -792,14 +1425,110 @@ if analyze_button and folder_path:
                 </div>
                 """, unsafe_allow_html=True)
 
-                # Add component details for debugging (concise)
-                with st.expander("🔍 View Component Analysis Details"):
-                    for i, comp in enumerate(components):
-                        st.write(f"**{comp['name']}:**")
-                        st.write(f"  • Files: {len(comp.get('files', []))} ({summarize_files(comp.get('files', []))})")
-                        st.write(f"  • Dirs: {len(comp.get('directories', []))}")
-                        st.write(f"  • Score: {comp.get('deployment_score', 0):.2f}")
-                        st.write(f"  • Type: {comp['name'].split('-')[0]}")
+                # Enhanced component details with full structure
+                st.markdown("---")
+                st.markdown("### 📦 Detected Components & Folder Structure")
+                st.markdown("Detailed breakdown of all microservice components found in your project:")
+                st.markdown("<br>", unsafe_allow_html=True)
+                
+                for i, comp in enumerate(components, 1):
+                    component_type = comp['name'].split('-')[0]
+                    
+                    # Component type emoji mapping
+                    type_emoji = {
+                        'frontend': '💻',
+                        'backend': '⚙️',
+                        'database': '💾',
+                        'cache': '🔄',
+                        'auth': '🔐',
+                        'gateway': '🚪',
+                        'service': '🔧',
+                        'config': '⚙️',
+                        'api': '🌐'
+                    }
+                    emoji = type_emoji.get(component_type, '📦')
+                    
+                    with st.expander(f"{emoji} **{comp['name'].upper()}** - {component_type.title()} Component", expanded=True):
+                        # Component Overview
+                        col1, col2, col3, col4 = st.columns(4)
+                        
+                        with col1:
+                            st.metric("📁 Files", len(comp.get('files', [])))
+                        with col2:
+                            st.metric("📂 Directories", len(comp.get('directories', [])))
+                        with col3:
+                            st.metric("💪 CPU", f"{comp['cpu_request']} cores")
+                        with col4:
+                            st.metric("🧠 Memory", f"{comp['memory_request']} GB")
+                        
+                        st.markdown("---")
+                        
+                        # File Structure
+                        if comp.get('files'):
+                            st.markdown("**📄 Component Files:**")
+                            
+                            # Group files by extension
+                            files_by_ext = {}
+                            for file in comp.get('files', []):
+                                ext = os.path.splitext(file)[1] or 'no extension'
+                                if ext not in files_by_ext:
+                                    files_by_ext[ext] = []
+                                files_by_ext[ext].append(file)
+                            
+                            # Display files grouped by type
+                            for ext, files in sorted(files_by_ext.items()):
+                                ext_display = ext if ext != 'no extension' else '📝 Other'
+                                st.markdown(f"**{ext_display}** ({len(files)} files)")
+                                
+                                # Show files in columns for better layout
+                                file_cols = st.columns(3)
+                                for idx, file in enumerate(sorted(files)):
+                                    with file_cols[idx % 3]:
+                                        st.markdown(f"  └─ `{file}`")
+                        else:
+                            st.info("No specific files detected for this component")
+                        
+                        st.markdown("<br>", unsafe_allow_html=True)
+                        
+                        # Directory Structure
+                        if comp.get('directories'):
+                            st.markdown("**📂 Component Directories:**")
+                            dir_cols = st.columns(3)
+                            for idx, directory in enumerate(comp.get('directories', [])):
+                                with dir_cols[idx % 3]:
+                                    st.markdown(f"  📁 `{directory}/`")
+                        
+                        st.markdown("<br>", unsafe_allow_html=True)
+                        
+                        # Resource Requirements
+                        st.markdown("**⚙️ Resource Configuration:**")
+                        resource_data = {
+                            "CPU Request": f"{comp['cpu_request']} cores",
+                            "Memory Request": f"{comp['memory_request']} GB",
+                            "Replicas": f"{comp['num_replicas']} instances",
+                            "Latency Threshold": f"{comp.get('latency_threshold', 400)} ms",
+                            "Deployment Score": f"{comp.get('deployment_score', 0):.2f}"
+                        }
+                        
+                        resource_cols = st.columns(2)
+                        for idx, (key, value) in enumerate(resource_data.items()):
+                            with resource_cols[idx % 2]:
+                                st.markdown(f"• **{key}:** `{value}`")
+                        
+                        # Component Summary
+                        st.markdown("<br>", unsafe_allow_html=True)
+                        st.markdown(f"""
+                        <div style="background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%); 
+                                    padding: 0.8rem; 
+                                    border-radius: 8px;
+                                    border-left: 3px solid #667eea;">
+                            <b>📊 Component Summary:</b><br>
+                            This <b>{component_type}</b> component contains <b>{len(comp.get('files', []))} files</b> 
+                            across <b>{len(comp.get('directories', []))} directories</b>, requiring 
+                            <b>{comp['cpu_request']} CPU cores</b> and <b>{comp['memory_request']} GB memory</b> 
+                            with <b>{comp['num_replicas']} replica(s)</b> for high availability.
+                        </div>
+                        """, unsafe_allow_html=True)
 
                 # Generate deployment results for each component
                 deployment_results = {}
@@ -1105,33 +1834,62 @@ if 'deployment_results' in st.session_state and st.session_state['deployment_res
     
     # Download option
     st.markdown("### 📥 Export Results")
-    if st.button("💾 Generate Deployment Report", use_container_width=True):
-        report_data = {
-            "analysis_date": time.strftime("%Y-%m-%d %H:%M:%S"),
-            "total_components": len(results),
-            "edge_deployments": sum(1 for r in results.values() if r['strategy']['deployment_type'] == 'edge'),
-            "fog_deployments": sum(1 for r in results.values() if r['strategy']['deployment_type'] == 'fog'),
-            "cloud_deployments": sum(1 for r in results.values() if r['strategy']['deployment_type'] == 'cloud'),
-            "total_cost_reduction": float(total_cost_reduction),
-            "total_latency_reduction": float(total_latency_reduction),
-            "components": [
-                {
-                    "name": name,
-                    "deployment_type": r['strategy']['deployment_type'],
-                    "location": r['strategy']['location'],
-                    "confidence": float(r['strategy']['confidence'])
-                }
-                for name, r in results.items()
-            ]
-        }
-        
-        st.download_button(
-            label="📄 Download JSON Report",
-            data=json.dumps(report_data, indent=2),
-            file_name=f"deployment_report_{time.strftime('%Y%m%d_%H%M%S')}.json",
-            mime="application/json"
-        )
-        st.success("✅ Report ready for download!")
+    
+    col_json, col_pdf = st.columns(2)
+    
+    with col_json:
+        if st.button("💾 Generate JSON Report", use_container_width=True):
+            report_data = {
+                "analysis_date": time.strftime("%Y-%m-%d %H:%M:%S"),
+                "project_path": folder_path if 'folder_path' in locals() else "N/A",
+                "total_components": len(results),
+                "edge_deployments": sum(1 for r in results.values() if r['strategy']['deployment_type'] == 'edge'),
+                "fog_deployments": sum(1 for r in results.values() if r['strategy']['deployment_type'] == 'fog'),
+                "cloud_deployments": sum(1 for r in results.values() if r['strategy']['deployment_type'] == 'cloud'),
+                "total_cost_reduction": float(total_cost_reduction),
+                "total_latency_reduction": float(total_latency_reduction),
+                "components": [
+                    {
+                        "name": name,
+                        "deployment_type": r['strategy']['deployment_type'],
+                        "location": r['strategy']['location'],
+                        "confidence": float(r['strategy']['confidence']),
+                        "cost_reduction": float(r['improvements']['cost_reduction']),
+                        "latency_reduction": float(r['improvements']['latency_reduction'])
+                    }
+                    for name, r in results.items()
+                ]
+            }
+            
+            st.download_button(
+                label="📄 Download JSON Report",
+                data=json.dumps(report_data, indent=2),
+                file_name=f"deployment_report_{time.strftime('%Y%m%d_%H%M%S')}.json",
+                mime="application/json",
+                use_container_width=True
+            )
+            st.success("✅ JSON Report ready for download!")
+    
+    with col_pdf:
+        if st.button("📑 Generate PDF Report", use_container_width=True):
+            try:
+                with st.spinner("🔄 Generating professional PDF report..."):
+                    # Generate PDF
+                    project_path = st.session_state.get('selected_folder', 'Unknown')
+                    pdf_buffer = generate_pdf_report(results, project_path)
+                    
+                    st.download_button(
+                        label="📥 Download PDF Report",
+                        data=pdf_buffer,
+                        file_name=f"HephaestusForge_Report_{time.strftime('%Y%m%d_%H%M%S')}.pdf",
+                        mime="application/pdf",
+                        use_container_width=True
+                    )
+                    st.success("✅ PDF Report ready for download!")
+                    st.balloons()
+            except Exception as e:
+                st.error(f"❌ Error generating PDF: {str(e)}")
+                st.info("💡 Make sure reportlab is installed: `pip install reportlab`")
 
 else:
     # Welcome screen when no analysis has been run

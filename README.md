@@ -46,6 +46,57 @@ streamlit run app.py
 
 The application will open in your default web browser at `http://localhost:8501`
 
+## 🚀 Deploy Publicly (For Placements/Showcase)
+
+Want to share this with recruiters or showcase in interviews? Deploy it for free!
+
+### Option 1: Streamlit Community Cloud (Recommended - FREE)
+
+**Perfect for placements! One-click deployment, free hosting.**
+
+1. Push your code to GitHub (public repository)
+2. Go to [share.streamlit.io](https://share.streamlit.io)
+3. Sign in with GitHub
+4. Click "New app" and select your repository
+5. Set main file path: `app.py`
+6. Click "Deploy"!
+
+**Result**: Get a public URL like `https://your-app.streamlit.app` that anyone can access!
+
+### Option 2: Hugging Face Spaces (FREE)
+
+1. Create account at [huggingface.co/spaces](https://huggingface.co/spaces)
+2. Create new Space → Select "Streamlit"
+3. Upload your files or connect GitHub
+4. Auto-deploys with public URL
+
+### Option 3: Railway.app (FREE tier available)
+
+```bash
+# Install Railway CLI
+npm i -g @railway/cli
+
+# Login and deploy
+railway login
+railway init
+railway up
+```
+
+### Option 4: Render.com (FREE)
+
+1. Connect your GitHub repo at [render.com](https://render.com)
+2. Create new "Web Service"
+3. Build command: `pip install -r requirements.txt`
+4. Start command: `streamlit run app.py --server.port=$PORT --server.address=0.0.0.0`
+
+### 💡 Tips for Placements
+
+- **Add live demo link** to your resume
+- **Share during interviews** - let recruiters interact with it
+- **Include in GitHub README** - showcase on your profile
+- **Record demo video** - for quick presentations
+- **Monitor usage** - shows real user engagement
+
 ### Running Experiments
 
 #### Train RL Agents
@@ -153,6 +204,17 @@ Submitted to Elsevier Future Generation Computer Systems (FGCS)
 ## Contact
 
 [Add contact information here]
+
+## 🎯 For Recruiters & Interviewers
+
+This project demonstrates:
+- **Machine Learning**: Deep Reinforcement Learning (DQN, PPO)
+- **Cloud Computing**: Kubernetes multi-cluster scheduling
+- **Web Development**: Interactive Streamlit dashboard
+- **System Design**: Distributed resource management
+- **Research**: Based on academic paper submitted to Elsevier FGCS
+
+**Live Demo**: [Add your deployed URL here]
 
 ## Acknowledgments
 

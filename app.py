@@ -521,6 +521,52 @@ def parse_microservice_folder(folder_path: str) -> List[Dict]:
             
         folder_path = folder_path.strip()
         
+        # Demo mode - generate sample components
+        if folder_path == '/demo/sample-microservice':
+            st.success("🎭 **Demo Mode Active** - Showing sample microservice architecture")
+            return [
+                {
+                    'name': 'frontend-1',
+                    'cpu_request': 0.2,
+                    'memory_request': 0.3,
+                    'num_replicas': 2,
+                    'latency_threshold': 400,
+                    'files': ['index.html', 'app.js', 'style.css', 'package.json', 'webpack.config.js'],
+                    'directories': ['src', 'public', 'components'],
+                    'deployment_score': 2.5
+                },
+                {
+                    'name': 'backend-1',
+                    'cpu_request': 0.4,
+                    'memory_request': 0.5,
+                    'num_replicas': 3,
+                    'latency_threshold': 400,
+                    'files': ['server.js', 'app.py', 'requirements.txt', 'config.yaml', 'routes.py'],
+                    'directories': ['api', 'routes', 'controllers'],
+                    'deployment_score': 3.2
+                },
+                {
+                    'name': 'database-1',
+                    'cpu_request': 0.5,
+                    'memory_request': 1.0,
+                    'num_replicas': 1,
+                    'latency_threshold': 400,
+                    'files': ['schema.sql', 'migrations.sql', 'seeds.sql'],
+                    'directories': ['db', 'migrations'],
+                    'deployment_score': 1.8
+                },
+                {
+                    'name': 'auth-1',
+                    'cpu_request': 0.2,
+                    'memory_request': 0.2,
+                    'num_replicas': 2,
+                    'latency_threshold': 400,
+                    'files': ['auth.js', 'jwt.js', 'passport.config.js'],
+                    'directories': ['auth', 'security'],
+                    'deployment_score': 1.5
+                },
+            ]
+        
         if not os.path.exists(folder_path):
             st.error(f"❌ Folder path does not exist: {folder_path}")
             st.info("💡 **Common Issues:**\n"
@@ -1164,9 +1210,31 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+# Detect if running on Streamlit Cloud
+is_cloud = os.path.exists('/mount/src') or not os.path.exists('C:/')
+
 # Main folder selection area
 st.markdown("---")
 st.header("📁 Step 1: Select Your Project Folder")
+
+# Cloud warning and demo mode
+if is_cloud:
+    st.info("""
+    🌐 **Running on Streamlit Cloud**  
+    The file browser won't work in cloud mode. Try the **Demo Mode** below to see how the app works!
+    """)
+    
+    col_demo1, col_demo2, col_demo3 = st.columns([1, 2, 1])
+    with col_demo2:
+        if st.button("🎭 Try Demo Mode - Sample Microservice Project", use_container_width=True, type="primary"):
+            st.session_state['demo_mode'] = True
+            st.session_state['selected_folder'] = '/demo/sample-microservice'
+            st.rerun()
+    
+    st.markdown("<br>", unsafe_allow_html=True)
+    st.markdown("**Or run this app locally to analyze your own projects:**")
+    st.code("git clone https://github.com/your-repo/microservice_deployment && streamlit run app.py", language="bash")
+    st.markdown("---")
 
 # Enhanced input area with better UX
 col1, col2, col3 = st.columns([1, 3, 1])
@@ -1192,19 +1260,23 @@ with col2:
     
     with col_button:
         st.markdown("<br>", unsafe_allow_html=True)
-        if st.button("📁 Browse", help="Open file explorer to select folder", key="browse_btn"):
-            # Show loading message
-            with st.spinner("Opening file explorer..."):
-                # Open folder dialog
-                selected_folder = select_folder()
-            
-            if selected_folder:
-                # Update session state with selected folder
-                st.session_state['selected_folder'] = selected_folder
-                st.session_state['browse_success'] = True
-                st.rerun()
-            else:
-                st.warning("⚠️ No folder selected. Please try again or type the path manually.")
+        if not is_cloud:
+            if st.button("📁 Browse", help="Open file explorer to select folder", key="browse_btn"):
+                # Show loading message
+                with st.spinner("Opening file explorer..."):
+                    # Open folder dialog
+                    selected_folder = select_folder()
+                
+                if selected_folder:
+                    # Update session state with selected folder
+                    st.session_state['selected_folder'] = selected_folder
+                    st.session_state['browse_success'] = True
+                    st.rerun()
+                else:
+                    st.warning("⚠️ No folder selected. Please try again or type the path manually.")
+        else:
+            st.markdown("<br>", unsafe_allow_html=True)
+            st.markdown("<small>🌐 Cloud</small>", unsafe_allow_html=True)
     
     # Show selected path with nice styling if folder was selected via browse
     if 'selected_folder' in st.session_state and st.session_state['selected_folder']:
@@ -1291,6 +1363,12 @@ with col2:
     
     st.markdown("<br>", unsafe_allow_html=True)
     analyze_button = st.button("🚀 Analyze & Generate Deployment Strategy", type="primary")
+
+# Handle demo mode
+if st.session_state.get('demo_mode', False):
+    folder_path = '/demo/sample-microservice'
+    analyze_button = True
+    st.session_state['demo_mode'] = False  # Reset for next run
 
 # Store parsed components in session state
 if 'microservice_components' not in st.session_state:

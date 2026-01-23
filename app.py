@@ -22,6 +22,9 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
 from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
 from reportlab.pdfgen import canvas
+import zipfile
+import tempfile
+import shutil
 
 # Configure Streamlit page
 st.set_page_config(
@@ -1219,26 +1222,78 @@ st.header("📁 Step 1: Select Your Project Folder")
 
 # Cloud warning and demo mode
 if is_cloud:
-    st.warning("""
-    🌐 **You're viewing this on Streamlit Cloud**  
+    st.success("""
+    🌐 **Running on Streamlit Cloud - Analyze Your Projects Online!**  
     
-    **Important:** This app runs on a remote server, so your local computer paths (like `C:/Users/...`) won't work here.
-    
-    **👇 Click the button below to see a live demo with sample data:**
+    No installation needed! Upload your project as a ZIP file and analyze it instantly.
     """)
     
-    col_demo1, col_demo2, col_demo3 = st.columns([1, 2, 1])
-    with col_demo2:
+    # Create tabs for different options
+    tab1, tab2, tab3 = st.tabs(["📤 Upload Your Project", "🎭 Try Demo", "💻 Run Locally"])
+    
+    with tab1:
+        st.markdown("### 📦 Upload Your Microservice Project")
+        st.info("""
+        **How it works:**
+        1. Compress your project folder into a ZIP file
+        2. Upload it below (max 200MB)
+        3. Get instant deployment analysis!
+        
+        **Supported formats:** `.zip` files containing your microservice project
+        """)
+        
+        uploaded_file = st.file_uploader(
+            "Choose a ZIP file", 
+            type=['zip'],
+            help="Upload a ZIP file of your microservice project folder",
+            key="project_zip"
+        )
+        
+        if uploaded_file is not None:
+            with st.spinner("📦 Extracting and analyzing your project..."):
+                try:
+                    # Create temporary directory
+                    temp_dir = tempfile.mkdtemp()
+                    
+                    # Extract ZIP file
+                    with zipfile.ZipFile(uploaded_file, 'r') as zip_ref:
+                        zip_ref.extractall(temp_dir)
+                    
+                    # Find the root folder (might be nested)
+                    extracted_items = os.listdir(temp_dir)
+                    if len(extracted_items) == 1 and os.path.isdir(os.path.join(temp_dir, extracted_items[0])):
+                        project_path = os.path.join(temp_dir, extracted_items[0])
+                    else:
+                        project_path = temp_dir
+                    
+                    st.session_state['selected_folder'] = project_path
+                    st.session_state['temp_dir'] = temp_dir
+                    st.session_state['uploaded_project'] = True
+                    
+                    st.success(f"✅ Project uploaded successfully! Found: `{os.path.basename(project_path)}`")
+                    st.info("👇 Click the button below to analyze your project")
+                    
+                    if st.button("🚀 Analyze My Project", type="primary", use_container_width=True):
+                        st.session_state['analyze_uploaded'] = True
+                        st.rerun()
+                    
+                except Exception as e:
+                    st.error(f"❌ Error extracting ZIP file: {str(e)}")
+                    st.info("💡 Make sure your ZIP file is not corrupted and contains a valid project folder")
+    
+    with tab2:
+        st.markdown("### 🎭 Demo Mode")
+        st.info("See how the app works with a sample microservice project")
+        
         if st.button("🎭 Try Demo Mode - Sample Microservice Project", use_container_width=True, type="primary", key="demo_button"):
             st.session_state['demo_mode'] = True
             st.session_state['selected_folder'] = '/demo/sample-microservice'
             st.rerun()
     
-    st.markdown("<br>", unsafe_allow_html=True)
-    
-    with st.expander("💻 Want to analyze YOUR projects?"):
+    with tab3:
+        st.markdown("### 💻 Run Locally on Your Computer")
         st.markdown("""
-        To analyze your own microservice projects, run this app **locally** on your computer:
+        For advanced users who want to run the app on their local machine:
         
         **Step 1:** Clone the repository
         ```bash
@@ -1256,7 +1311,11 @@ if is_cloud:
         streamlit run app.py
         ```
         
-        Then you can use the Browse button to select any folder on your computer!
+        **Benefits of running locally:**
+        - ✅ Use file browser to select folders
+        - ✅ No file size limits
+        - ✅ Analyze multiple projects quickly
+        - ✅ Keep your code private
         """)
     
     st.markdown("---")
@@ -1395,6 +1454,12 @@ if st.session_state.get('demo_mode', False):
     folder_path = '/demo/sample-microservice'
     analyze_button = True
     st.session_state['demo_mode'] = False  # Reset for next run
+
+# Handle uploaded project analysis
+if st.session_state.get('analyze_uploaded', False):
+    folder_path = st.session_state.get('selected_folder', '')
+    analyze_button = True
+    st.session_state['analyze_uploaded'] = False  # Reset for next run
 
 # Store parsed components in session state
 if 'microservice_components' not in st.session_state:
@@ -2041,5 +2106,15 @@ st.markdown("""
     <p style="font-size: 0.9rem;">Powered by Reinforcement Learning & Deep Sets Architecture</p>
 </div>
 """, unsafe_allow_html=True)
+
+# Cleanup temporary files
+if st.session_state.get('temp_dir') and os.path.exists(st.session_state.get('temp_dir', '')):
+    try:
+        # Clean up on session end (this runs when user leaves or refreshes)
+        import atexit
+        temp_dir_to_clean = st.session_state['temp_dir']
+        atexit.register(lambda: shutil.rmtree(temp_dir_to_clean, ignore_errors=True))
+    except:
+        pass
 
 

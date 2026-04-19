@@ -189,7 +189,7 @@ Experimental results comparing RL agents against baseline algorithms are stored 
 
 ## Citation
 
-If you use this code in your research, please cite:
+If you use this code in your research please cite:
 
 ```
 HephaestusForge: Optimal Microservice Deployment across

@@ -6,7 +6,8 @@
 - GitHub account
 - Your code in a public GitHub repository
 
-### Steps
+### Step
+
 
 1. **Push to GitHub**
    ```bash

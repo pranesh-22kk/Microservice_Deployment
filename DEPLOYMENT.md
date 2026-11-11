@@ -4,7 +4,7 @@
 
 ### Prerequisites
 - GitHub account
-- Your code in a public GitHub repository
+- Your code in a public GitHub repository.
 
 ### Step
 
